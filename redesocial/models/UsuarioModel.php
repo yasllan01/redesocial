@@ -1,30 +1,46 @@
+
 <?php
-//CREATE
-function inserirUsuario($con, $dados) {
-    $stmt = $con->prepare(
-        "INSERT INTO Usuarios (nome, username, email, senha)
-         VALUES (?, ?, ?, ?))");
-    $stmt -> execute([      
+
+// CADASTRAR USUÁRIO
+function cadastrarUsuario($con, $dados) {
+
+    $sql = "INSERT INTO usuarios
+            (nome, username, email, senha)
+            VALUES (?, ?, ?, ?)";
+
+    $stmt = $con->prepare($sql);
+
+    $senhaHash = password_hash(
+        $dados['senha'],
+        PASSWORD_DEFAULT
+    );
+
+    return $stmt->execute([
         $dados['nome'],
         $dados['username'],
         $dados['email'],
-        $dados['senha']]);
-    return $con->lastInsertId();
+        $senhaHash
+    ]);
 }
-//READ
-function listarUsuarios($con) {
-    $stmt = $con->query("SELECT * FROM Usuarios");
-    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+// BUSCAR USUÁRIO PELO EMAIL
+function buscarUsuarioPorEmail($con, $email) {
+
+    $sql = "SELECT * FROM usuarios WHERE email = ?";
+
+    $stmt = $con->prepare($sql);
+    $stmt->execute([$email]);
+
+    return $stmt->fetch();
 }
-//UPDATE
-function atualizarUsuario($con, $id, $dados) {
-    $stmt = $con->prepare(
-        "UPDATE Usuarios SET senha = ? WHERE id_usuario = ?");
-    $stmt->execute([$dados["senha"],
-                  $id]);
-}
-//DELETE
-function removerUsuario($con, $id) {
-    $stmt = $con->prepare("DELETE FROM Usuarios WHERE id_usuario = ?");
-    $stmt->execute([$id]);
+
+// BUSCAR USUÁRIO PELO USERNAME
+function buscarUsuarioPorUsername($con, $username) {
+
+    $sql = "SELECT * FROM usuarios WHERE username = ?";
+
+    $stmt = $con->prepare($sql);
+    $stmt->execute([$username]);
+
+    return $stmt->fetch();
 }

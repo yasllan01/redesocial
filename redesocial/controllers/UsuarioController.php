@@ -1,76 +1,79 @@
+
 <?php
 
-require_once __DIR__ . "/models/UsuarioModel.php";
+require_once __DIR__ . "/../models/UsuarioModel.php";
 
-function teste(){
-    echo json_encode(["mensagem" => "Back-end respondendo com sucesso!"]);
-    exit;
-}
-//Recebe e valida os dados antesde chamar o Model
-function receberDadosUsuario() {
-    $dados = json_decode(file_get_contents("php://input"), true);
+// CADASTRAR USUÁRIO
+function cadastrar($con) {
 
-    if(!is_array($dados)){
-        http_response_code(400);
-        echo json_encode(["erro" => "Envie um objeto JSON com os dados de usuário!"]);
-        return null;
-    }
-    foreach (['nome', 'username', 'email', 'senha'] as $campo){
-        if (!isset($dados[$campo]) ||
-            !is_string($dados[$campo]) ||
-            trim($dados[$campo]) === '') {
-            http_response_code(400);
-            echo json_encode([
-                "erro" => "O campo $campo é obrigatório e deve ser um texto não vazio."
-            ]);
-            return null;
-        }
-    }
-}
-{
-return $dados;
-}
-function receberIdUsuario(){
-    $id = filter_var($_GET['id'] ?? null, FILTER_VALIDATE_INT,
-       ["options" => ["min_range" => 1]]);
-    if($id === false){
-        http_response_code(400);
-        echo json_encode([
-            "erro" => "Informe um id de usuário válido"
-        ]);
-        return null;
-    }
-    return $id;
-}
-function createUsuario($con) {
-    $dados = receberDadosUsuario();
-    if ($dados === null){
+    if ($_SERVER["REQUEST_METHOD"] !== "POST") {
         return;
     }
-    $id = inserirUsuario($con, $dados);
-    http_response_code(201);
-    echo json_encode(["mensagem" => "Usuário criado com sucesso!", "id" => $id]);
+
+    $nome = trim($_POST["nome"] ?? "");
+    $username = trim($_POST["username"] ?? "");
+    $email = trim($_POST["email"] ?? "");
+    $senha = $_POST["senha"] ?? "";
+
+    if (
+        $nome === "" ||
+        $username === "" ||
+        $email === "" ||
+        $senha === ""
+    ) {
+        return "Preencha todos os campos.";
+    }
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        return "E-mail inválido.";
+    }
+
+    if (buscarUsuarioPorEmail($con, $email)) {
+        return "Este e-mail já está cadastrado.";
+    }
+
+    if (buscarUsuarioPorUsername($con, $username)) {
+        return "Este nome de usuário já está em uso.";
+    }
+
+    $dados = [
+        "nome" => $nome,
+        "username" => $username,
+        "email" => $email,
+        "senha" => $senha
+    ];
+
+    cadastrarUsuario($con, $dados);
+
+    return true;
 }
-function readUsuario($con) {
-    echo json_encode(listarUsuarios($con));
-}
-function updateUsuario($con) {
-    $id = receberIdUsuario();
-    if ($id === null){
+
+// REALIZAR LOGIN
+function login($con) {
+
+    if ($_SERVER["REQUEST_METHOD"] !== "POST") {
         return;
     }
-    $dados = receberDadosUsuario();
-    if ($dados === null){
-        return;
+
+    $email = trim($_POST["email"] ?? "");
+    $senha = $_POST["senha"] ?? "";
+
+    $usuario = buscarUsuarioPorEmail($con, $email);
+
+    if (
+        !$usuario ||
+        !password_verify($senha, $usuario["senha"])
+    ) {
+        return "E-mail ou senha incorretos.";
     }
-    atualizarUsuario($con, $id, $dados);
-    echo json_encode(["mensagem" => "Senha alterada com sucesso!"]);
-}
-function deleteUsuario($con) {
-    $id = receberIdUsuario();
-    if ($id === null){
-        return;
-    }
-    removerUsuario($con, $id);
-    echo json_encode(["mensagem" => "Cliente removido com sucesso!"]);
+
+    
+
+    session_regenerate_id(true);
+
+   $_SESSION["usuario_id"] = $usuario["id"];
+   $_SESSION["usuario_nome"] = $usuario["nome"];
+   $_SESSION["usuario_username"] = $usuario["username"];
+
+    return true;
 }
